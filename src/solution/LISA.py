@@ -146,7 +146,6 @@ class LISA():
     def generate_pages(self, sorted_data, one_dim_mappings, col_split_idxes):
         n_cols = col_split_idxes.shape[0]
         col_split_shard_ids = [0]
-        # self.shard_infos = [[[], []]] * n_cols
         self.shard_infos = []
         self.pages = []
         start = 0
@@ -213,10 +212,6 @@ class LISA():
                 self.shard_infos.append(shard_info)
                 entry_start_idx = entry_end_idx
 
-            # if entry_start_idx != end:
-            #     print entry_start_idx, end, i
-            # assert entry_start_idx == end
-
             start = end
 
         self.m_counts = []
@@ -248,16 +243,13 @@ class LISA():
 
 
     def monotone_mappings(self, data):
-        # idxes = np.zeros(shape=[points.shape[0]], dtype=np_idx_type())
         idxes = np.searchsorted(self.all_split_points_without_head_and_tail[0][0], data[:, 0], side='right')
         for i in range(1, data.shape[1] - 1):
-            # print 'idxes.max =', idxes.max(), self.split_points_without_head_and_tail_list[i].shape
             for j in range(idxes.shape[0]):
                 idxes[j] = idxes[j] * self.n_parts_each_dim + np.searchsorted(self.all_split_points_without_head_and_tail[i][idxes[j]], data[j, i],side='right')
 
         last_dim_data = data[:, -1]
         left_data = data[:, 0:-1]
-        # tmp = np.prod(left_data - self.borders[idxes], axis=1)
 
         measures = np.prod(left_data - self.borders[idxes], axis=1) / self.cell_measures[idxes]
 
@@ -266,10 +258,6 @@ class LISA():
 
     def monotone_mappings_and_col_split_idxes_for_sorted_data(self, sorted_points):
         mappings = self.monotone_mappings(sorted_points)
-        # print '**************'
-        # check_order(mappings)
-        # print '**************'
-        # col_idxes = (mappings / self.max_column_measure).astype(np_idx_type())
         col_idxes = np.searchsorted(self.model_split_mappings_without_tail, mappings, side='right')
         N = col_idxes[-1]
         print '----------------N =', N, col_idxes.max()
@@ -412,7 +400,6 @@ class LISA():
         #                                                                             max=self.col_min_mappings.shape[
         #                                                                                     0] - 1)
 
-        # print 'col_idxes =', col_idxes
         trans_mappings = mappings - self.col_min_mappings[col_idxes]
 
         shard_id_offsets = self.col_split_shard_ids[col_idxes]
@@ -442,38 +429,13 @@ class LISA():
             return idx
 
     def get_query_page_nos(self, query_ranges):
-        time_start = time.time()
-
-        # print '------query start.'
         lower_mappings, upper_mappings, num_query_points_each_query = self.get_query_ranges_mappings(query_ranges)
-        time_end = time.time()
-        print 'time is', time_end - time_start
-        time_start = time.time()
-        # print '------step 1 finished.'
         lower_shard_ids = self.predict_shard_ids(lower_mappings)
         upper_shard_ids = self.predict_shard_ids(upper_mappings)
-        time_end = time.time()
-        print 'time is', time_end - time_start
-
-        # print '----------lower_mappings-------------'
-        # print lower_mappings
-        # print '----------upper_mappings-------------'
-        # print upper_mappings
-        # print '----------lower_shard_ids-------------'
-        # print lower_shard_ids
-        # print '----------upper_shard_ids-------------'
-        # print upper_shard_ids
-        # print '----------num_query_points_each_query-------------'
-        # print num_query_points_each_query
-
         start = 0
-
         query_page_nos = []
-        # print '----', len(num_query_points_each_query), lower_shard_ids.shape
-
         for i in range(len(num_query_points_each_query)):
             page_nos = []
-            # page_nos = np.arange(0, 2000, dtype=np_idx_type()).tolist()
             end = start + num_query_points_each_query[i]
             if end > start:
                 query_lower_shard_ids = lower_shard_ids[start:end]
@@ -493,42 +455,35 @@ class LISA():
                         __ = upper_shard_split_mappings[_]
 
                     # shard_split_mappings
-                    # lower_idx = self.predict_within_shard(query_lower_mappings[j], lower_shard_id, 'left')
-                    # upper_idx = self.predict_within_shard(query_upper_mappings[j], upper_shard_id, 'right')
-                    # if lower_shard_id == upper_shard_id:
-                    #     if lower_idx >= 0:
-                    #         # print '---type 1', lower_idx, upper_idx, self.shard_infos[lower_shard_id][0][lower_idx:upper_idx + 1]
-                    #         page_nos.extend(self.shard_infos[lower_shard_id][0][lower_idx:upper_idx + 1])
-                    # else:
-                    #     if lower_idx >= 0:
-                    #         page_nos.extend(self.shard_infos[lower_shard_id][0][lower_idx:])
-                    #     # print '---type 2', self.shard_infos[lower_shard_id][0][lower_idx:]
-                    #     for k in range(lower_shard_id + 1, upper_shard_id):
-                    #         page_nos.extend(self.shard_infos[k][0])
-                    #         # print '---type 3', self.shard_infos[k][0]
-                    #     if upper_idx >= 0:
-                    #         page_nos.extend(self.shard_infos[upper_shard_id][0][0:upper_idx + 1])
-                        # print '---type 4', self.shard_infos[upper_shard_id][0][0:upper_idx + 1]
+                    lower_idx = self.predict_within_shard(query_lower_mappings[j], lower_shard_id, 'left')
+                    upper_idx = self.predict_within_shard(query_upper_mappings[j], upper_shard_id, 'right')
+                    if lower_shard_id == upper_shard_id:
+                        if lower_idx >= 0:
+                            page_nos.extend(self.shard_infos[lower_shard_id][0][lower_idx:upper_idx + 1])
+                    else:
+                        if lower_idx >= 0:
+                            page_nos.extend(self.shard_infos[lower_shard_id][0][lower_idx:])
+                        for k in range(lower_shard_id + 1, upper_shard_id):
+                            page_nos.extend(self.shard_infos[k][0])
+                        if upper_idx >= 0:
+                            page_nos.extend(self.shard_infos[upper_shard_id][0][0:upper_idx + 1])
                     # for k in range(lower_shard_id, upper_shard_id + 1):
                     #     page_nos.extend(self.shard_infos[k][0])
-            # page_nos = set(page_nos)
-            # query_page_nos.append(page_nos)
+            page_nos = set(page_nos)
+            query_page_nos.append(page_nos)
 
             start = end
 
-        time_end = time.time()
-        return query_page_nos, time_end - time_start
+        return query_page_nos
 
     def query_single_thread(self, query_ranges):
-        query_page_nos, duration = self.get_query_page_nos(query_ranges)
-        print '----duration =', duration
+        query_page_nos = self.get_query_page_nos(query_ranges)
+        # print 'query_page_nos = ', query_page_nos
         n_entries_each_query = np.zeros(shape=[query_ranges.shape[0]], dtype=np_idx_type())
         n_pages_each_query = np.zeros(shape=[query_ranges.shape[0]], dtype=np_idx_type())
 
         for i in range(len(query_page_nos)):
-            # for i in range(1):
             page_nos = query_page_nos[i]
-            # print '----------------query', i, '---------------', len(page_nos)
             n_pages_each_query[i] = len(page_nos)
             query_results = []
             for page_no in page_nos:
@@ -540,14 +495,8 @@ class LISA():
                 # query_results = query_results[self.overlap(query_results, query_ranges[i])]
                 query_results = self.overlap(query_results, query_ranges[i])
                 n_entries_each_query[i] = query_results.shape[0]
-                # if query_results.shape[0] == 0:
-                #     n_pages_each_query[i] -= 1
-                # if i < 100:
-                #     print '------------------i =', i, ', n =', query_results.shape[0], ', n_page =', n_pages_each_query[i]
-                    # print query_ranges[i]
-                    # print query_results
 
-        return n_pages_each_query, n_entries_each_query, duration
+        return n_pages_each_query, n_entries_each_query
 
     def get_query_keys_within_sphericals(self, query_ranges, centers, radiuses):
         query_page_nos, time_duration = self.get_query_page_nos(query_ranges)
@@ -664,7 +613,7 @@ class LISA():
         print 'approximating distance bounds takes', end - start, 'seconds'
         if ideal is not None:
             dists = ideal
-            print 'haha, dists.shape =', dists.shape
+            print 'dists.shape =', dists.shape
         dists = np.clip(dists, a_min=1, a_max=Config().max_value)
         radiuses = dists[:, K - 1]
 
@@ -714,8 +663,9 @@ class LISA():
                     if n_queried_keys > 0:
                         # radius = next_radiuses[i] * (math.pow(1. * K / n_queried_keys, 1. / self.data_dim) + 0.05)
                         tmp = math.pow(1. * K / n_queried_keys, 1. / self.data_dim)
-                        if tmp > 1.1:
-                            tmp = 1.1
+                        ratio_bd = 1.1
+                        if tmp > ratio_bd:
+                            tmp = ratio_bd
                         radius = next_radiuses[i] * tmp
                     next_radiuses_list.append(radius)
 
@@ -752,44 +702,12 @@ class LISA():
                 break
         return query_keys
 
-    def very_naive_query(self, query_ranges, sorted_data, one_dim_mappings):
-        lower_mappings, upper_mappings, num_query_points_each_query = self.get_query_ranges_mappings(query_ranges)
-        start = 0
-        n_entries_each_query = np.zeros(shape=[query_ranges.shape[0]], dtype=np_idx_type())
-        for i in range(len(num_query_points_each_query)):
-            end = start + num_query_points_each_query[i]
-            query_results = []
-            if end > start:
-                query_lower_mappings = lower_mappings[start:end]
-                query_upper_mappings = upper_mappings[start:end]
-                # print '---', query_lower_mappings
-                # print '---', query_upper_mappings
-                for j in range(query_lower_mappings.shape[0]):
-                    lower_mapping = query_lower_mappings[j]
-                    upper_mapping = query_upper_mappings[j]
-                    lower_idx = np.searchsorted(one_dim_mappings, lower_mapping, side='left')
-                    upper_idx = np.searchsorted(one_dim_mappings, upper_mapping, side='right')
-
-                    query_results.append(sorted_data[lower_idx:upper_idx])
-            if len(query_results) > 0:
-                query_results = np.concatenate(query_results, axis=0)
-                query_results = self.overlap(query_results, query_ranges[i])
-                n_entries_each_query[i] = query_results.shape[0]
-
-            start = end
-
-        return n_entries_each_query
-
-
     def append_data_in_page(self, page, point):
-        # print '-***', page.shape, point.shape
         return np.r_[page, point.reshape([-1, self.data_dim])]
 
     def split_page(self, page, point, print_flag=False):
         page = self.append_data_in_page(page, point)
-        # print '--page.shape =', page.shape
         page_mappings = self.monotone_mappings(page)
-        # print '--page_mappings.shape =', page_mappings.shape
         idxes = np.argsort(page_mappings)
         page_mappings = page_mappings[idxes]
         page = page[idxes]
@@ -800,9 +718,6 @@ class LISA():
         shard = self.shard_infos[shard_id]
         shard_page_nos = shard[0]
         shard_split_mappings = shard[1]
-        # print '*****', point.shape
-        # print len(shard_page_nos)
-        # print len(shard_split_mappings)
         if len(shard_page_nos) == 0:
             new_page = np.reshape(point, [1, -1])
             shard_page_nos.append(len(self.pages))
@@ -814,8 +729,6 @@ class LISA():
             page_idx_in_this_shard = 0
         else:
             page_idx_in_this_shard = np.searchsorted(shard_split_mappings, point_mapping, side='right')
-
-        # print '-------', len(shard_page_nos), page_idx_in_this_shard
 
         page_no = shard_page_nos[page_idx_in_this_shard]
         page = self.pages[page_no]
@@ -864,7 +777,6 @@ class LISA():
 
         print '--shard_ids.shape =', shard_ids.shape
         for i in range(points.shape[0]):
-            # print 'i =', i
             point = points[i]
             point_mapping = point_mappings[i]
             shard_id = shard_ids[i]
@@ -878,10 +790,9 @@ class LISA():
         page_mappings_list = []
         for page in self.pages:
             page_mappings_list.append(self.monotone_mappings(page))
-        # print '--shard_ids.shape =', shard_ids.shape
+
         err_count = 0
         for i in range(points.shape[0]):
-            # print 'i =', i
             point_mapping = point_mappings[i]
             shard_id = shard_ids[i]
             page_mappings = page_mappings_list[shard_id]
@@ -925,7 +836,7 @@ class LISA():
             # if diff.sum() == 0:
             flag = True
             for j in range(self.data_dim):
-                if point[j] != page[i,j]:
+                if point[j] != page[i][j]:
                     flag = False
                     break
             if flag == True:
@@ -1169,15 +1080,6 @@ class LISA():
         print 'n_pages =', len(self.m_counts)
 
         self.params = np.load(params_path)
-        # print '------self.params.shape =', self.params.shape
-        # new_params = np.zeros(shape=[self.params.shape[0] + 2], dtype=self.params.dtype)
-        # new_params[0:-2] = self.params
-        # new_params[-2] = Config().min_value
-        # new_params[-1] = Config().max_value
-        # np.save(col_params_path, new_params)
-        # self.params = np.load(col_params_path)
-        # print '------self.params.shape =', self.params.shape
-
         self.params_dump()
 
         self.col_min_mappings = np.load(col_min_mappings_path)
@@ -1238,292 +1140,3 @@ def check_order(mappings):
             print i, mappings[i], mappings[i + 1]
             count += 1
     print '**********count =', count
-
-
-def save_lattice_info(data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses,
-                      n_nodes_each_dim):
-    lattice_dir = os.path.join(data_dir, 'lattice')
-    lattice_dir = os.path.join(lattice_dir, str(n_nodes_each_dim))
-    FileViewer.detect_and_create_dir(lattice_dir)
-    lattice_nodes_path = os.path.join(lattice_dir, 'lattice_nodes.npy')
-    nodes_radiuses_path = os.path.join(lattice_dir, 'nodes_radiuses.npy')
-    lattice_training_points_path = os.path.join(lattice_dir, 'training_points.npy')
-    lattice_training_radiuses_path = os.path.join(lattice_dir, 'training_radiuses.npy')
-    np.save(lattice_nodes_path, lattice_nodes)
-    np.save(nodes_radiuses_path, nodes_radiuses)
-    np.save(lattice_training_points_path, lattice_training_points)
-    np.save(lattice_training_radiuses_path, lattice_training_radiuses)
-
-
-def main(_):
-    Config(Config().home_dir)
-    print 'home_dir =', Config().home_dir
-    print 'data_dir =', Config().data_dir
-
-    # results_dir = os.path.join(Config().data_dir, 'results')
-    # FileViewer.detect_and_create_dir(results_dir)
-
-    query_range_path = os.path.join(Config().data_dir, Config().query_range_path)
-    # query_range_path = os.path.join(Config().data_dir, 'query_ranges.qr')
-
-    query_range_strs = FileViewer.load_list(query_range_path)
-    query_ranges = []
-    for line in query_range_strs:
-        query_ranges.append([float(i) for i in line.strip().split(' ')])
-    query_ranges = np.array(query_ranges, dtype=np_data_type())
-
-    # idxes = [1,3]
-    # query_ranges = query_ranges[idxes]
-
-    # query_ranges = query_ranges[0:100]
-
-    sorted_data = np.load(os.path.join(Config().data_dir, Config().static_data_name))
-    params = np.load(os.path.join(Config().data_dir, 'col_params.npy'))
-
-    # data_to_insert = np.load(os.path.join(Config().data_dir, Config().data_to_insert_name))
-
-    # print 'sorted_data.size =', sorted_data.shape[0]
-    my_idx = LISA(params=params, data_dim=Config().data_dim, page_size=Config().page_size, sigma=Config().sigma)
-    model_dir = my_idx.model_dir
-    # half_model_dir = os.path.join(model_dir, 'half')
-    #
-    one_dim_mappings_path = os.path.join(Config().data_dir, 'one_dim_mappings.npy')
-    col_split_idxes_path = os.path.join(Config().data_dir, 'col_split_idxes.npy')
-    # # cell_ids_path = os.path.join(Config().data_dir, 'cell_ids.npy')
-
-    if os.path.exists(one_dim_mappings_path) == False:
-        one_dim_mappings, col_split_idxes = my_idx.monotone_mappings_and_col_split_idxes_for_sorted_data(sorted_data)
-        np.save(one_dim_mappings_path, one_dim_mappings)
-        np.save(col_split_idxes_path, col_split_idxes)
-        # np.save(cell_ids_path, cell_ids)
-        # print one_dim_mappings.shape
-        # print col_split_idxes.shape
-        check_order(one_dim_mappings)
-
-
-    #
-    # col_split_idxes = np.load(col_split_idxes_path)
-    # one_dim_mappings = np.load(one_dim_mappings_path)
-    # col_dir = os.path.join(Config().models_dir, 'piecewise')
-    # col_dir = os.path.join(col_dir, 'cols')
-    # my_idx.load_piecewise_models_params(col_dir, n_cols=col_split_idxes.shape[0])
-    # my_idx.generate_pages(sorted_data, one_dim_mappings, col_split_idxes)
-    # print 'pages are generated.'
-    # my_idx.set_model_dir(half_model_dir)
-    # my_idx.save()
-    # print 'half model has been saved.'
-    # #
-    # # # # print col_split_idxes
-    # # # # print my_idx.params
-    # # #
-    # #
-    # # insert_model_dir = os.path.join(model_dir, 'insert-1')
-    # # my_idx.set_model_dir(insert_model_dir)
-    # # my_idx.set_model_dir(half_model_dir)
-    # # my_idx.load()
-    # data_to_insert = np.load(os.path.join(Config().data_dir, Config().data_to_insert_name))
-    # offset = 50000000
-    # if offset > data_to_insert.shape[0]:
-    #     offset = data_to_insert.shape[0]
-    # n_insertions = int(data_to_insert.shape[0] / offset)
-    # # n_insertions = 1
-    # print 'n_insertions =', n_insertions
-    # print 'data_to_insert.shape =', data_to_insert.shape
-    # for i in range(n_insertions):
-    #     # if i == 0:
-    #     #     continue
-    #     print '-------------insert ', (i + 1), '-------------'
-    #     start = i * offset
-    #     end = start + offset
-    #     part_data = data_to_insert[start:end]
-    #     insert_model_dir = os.path.join(model_dir, 'insert-' + str(i + 1))
-    #     my_idx.set_model_dir(insert_model_dir)
-    #     my_idx.insert(part_data)
-    #     my_idx.save()
-    #     # n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    #     # print n_entries_each_query
-    #     # print n_pages_each_query
-    #
-    # delete_data = data_to_insert[0:offset]
-    # print 'delete_data.shape =', delete_data.shape
-    # insert_model_dir = os.path.join(model_dir, 'insert-1')
-    # my_idx.set_model_dir(insert_model_dir)
-    # my_idx.load()
-    # delete_model_dir = os.path.join(model_dir, 'after_delete')
-    #
-    # my_idx.delete(delete_data)
-    # my_idx.set_model_dir(delete_model_dir)
-    # my_idx.save()
-
-    one_dim_mappings = np.load(one_dim_mappings_path)
-
-    print '---------', query_ranges.shape
-    half_model_dir = os.path.join(model_dir, 'half')
-    my_idx.set_model_dir(half_model_dir)
-    # my_idx.load()
-    total_pages = my_idx.very_very_query(query_ranges, one_dim_mappings=one_dim_mappings)
-    print 'total_pages =', total_pages
-    # n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    # print 'half:', np.sum(n_pages_each_query), np.sum(n_entries_each_query)
-    # print n_entries_each_query
-    # delete_model_dir = os.path.join(model_dir, 'after_delete')
-    # my_idx.set_model_dir(delete_model_dir)
-    # my_idx.load()
-    # n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    # print 'delete:', np.sum(n_pages_each_query), np.sum(n_entries_each_query)
-    #
-    # n_insertions = 1
-    # for i in range(n_insertions):
-    #     insert_model_dir = os.path.join(model_dir, 'insert-' + str(i + 1))
-    #     my_idx.set_model_dir(insert_model_dir)
-    #     my_idx.load()
-    #     n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    #     print 'insert', (i+1), ':', np.sum(n_pages_each_query), np.sum(n_entries_each_query)
-
-
-    # print query_ranges
-    # n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    # print n_entries_each_query
-    # print n_pages_each_query
-    #
-    # delete_model_dir = os.path.join(model_dir, 'after_delete')
-    # my_idx.set_model_dir(delete_model_dir)
-    # half_model_dir = os.path.join(model_dir, 'half')
-    # my_idx.set_model_dir(half_model_dir)
-    # my_idx.load()
-    # n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    # print n_entries_each_query
-    # print n_pages_each_query
-    #
-    # #
-    # # # n_entries_each_query_naive_path = os.path.join(results_dir, 'n_entries_each_query_naive.npy')
-    # # # # np.save(n_entries_each_query_naive_path, n_entries_each_query_naive)
-    # # # n_entries_each_query_naive = np.load(n_entries_each_query_naive_path)
-    # #
-    #
-    # my_idx.load()
-    # #
-    #
-
-    # print query_ranges
-    # n_pages_each_query, n_entries_each_query, time_duration = my_idx.query_single_thread(query_ranges)
-    # # print n_entries_each_query
-    # # print n_pages_each_query
-    # print np.sum(n_pages_each_query)
-    # print np.sum(n_entries_each_query)
-
-
-    # n_pages_each_query = np.array(n_pages_each_query)
-    # n_entries_each_query = np.array(n_entries_each_query)
-    # print np.sum(n_pages_each_query)
-    # print np.sum(n_entries_each_query)
-    # my_idx.save()
-
-    # one_dim_mappings = np.load(one_dim_mappings_path)
-    # col_split_idxes = np.load(col_split_idxes_path)
-    # # print col_split_idxes.tolist()
-    # n_entries_each_query_naive = my_idx.very_naive_query(query_ranges,sorted_data,one_dim_mappings)
-    # print n_entries_each_query_naive
-
-    print '---------------------KNN Query-----------------------------'
-    # n_nodes_each_dim = Config().n_nodes_each_dim
-    # lattice_dir = os.path.join(Config().data_dir, 'lattice')
-    # lattice_dir = os.path.join(lattice_dir, str(n_nodes_each_dim))
-    # FileViewer.detect_and_create_dir(lattice_dir)
-    # lattice_nodes_path = os.path.join(lattice_dir, 'lattice_nodes.npy')
-    # nodes_radiuses_path = os.path.join(lattice_dir, 'nodes_radiuses.npy')
-    # lattice_training_points_path = os.path.join(lattice_dir, 'training_points.npy')
-    #
-    # lattice_training_radiuses_path = os.path.join(lattice_dir, 'training_radiuses.npy')
-    #
-    # lattice_testing_points_path = os.path.join(lattice_dir, 'testing_points.npy')
-    #
-    # my_idx = LISA(params=params, data_dim=Config().data_dim, page_size=Config().page_size, sigma=Config().sigma)
-    # model_dir = my_idx.model_dir
-    # half_model_dir = os.path.join(model_dir, 'half')
-    # my_idx.set_model_dir(half_model_dir)
-    # my_idx.load()
-    # # lattice_nodes = my_idx.lattice_nodes_gen(n_nodes_each_dim)
-    # # print '--------lattice_nodes.shape =', lattice_nodes.shape
-    # # lattice_training_points = my_idx.lattice_training_data_gen(lattice_nodes.shape[0] * 40)
-    # # print '--------lattice_training_points.shape =', lattice_training_points.shape
-    # # np.save(lattice_nodes_path, lattice_nodes)
-    # # np.save(lattice_training_points_path, lattice_training_points)
-    # #
-    # # lattice_training_points = np.load(lattice_training_points_path)
-    # # print lattice_training_points[0:10]
-    # # print lattice_training_points.shape
-    #
-    #
-    #
-    # # nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, n_nodes_each_dim, 20)
-    # # print '----------------------------------------'
-    # # lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, n_nodes_each_dim, 20)
-    # # np.save(nodes_radiuses_path, nodes_radiuses)
-    # # np.save(lattice_training_radiuses_path, lattice_training_radiuses)
-    # #
-    # # save_lattice_info(Config().data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses, n_nodes_each_dim)
-    #
-    # lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
-    # lattice_model_dir = os.path.join(lattice_model_dir, str(n_nodes_each_dim))
-    #
-    # ideal_path = os.path.join(lattice_model_dir, 'training_Y.npy')
-    # ideal = np.load(ideal_path).transpose()
-    # print 'ideal.shape =', ideal.shape
-    # my_idx.load_knn_model(lattice_model_dir)
-    #
-    # query_centers = np.load(lattice_training_points_path)
-    # query_centers = query_centers[0:10000]
-    # ideal = ideal[0:10000]
-    # # ideal = ideal[:,9]
-    # K = 10
-    # all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(query_centers, K, ideal)
-    # # node_indices_list = np.array(node_indices_list).transpose()
-    # # # B = my_idx.lat_reg.B[K]
-    # #
-    # test_centers = []
-    # # for i in range(len(all_queried_keys)):
-    # for i in range(100):
-    #     print '--------------------', i, '-------------------------'
-    #     queried_keys = all_queried_keys[i]
-    #     node_indices = node_indices_list[i]
-    #     print radiuses[i], init_radiuses[i]
-    #     print queried_keys.shape
-    #     n_pages = n_pages_every_query[i]
-    #     print n_pages
-
-
-
-    # print B[node_indices]
-    # print total_n_pages
-    # test_centers = np.array(test_centers, dtype=query_centers.dtype)
-    # print test_centers.shape
-    # np.save(lattice_testing_points_path, test_centers)
-
-    # my_idx.load_knn_model(lattice_model_dir)
-    #
-    # query_centers = np.load(lattice_testing_points_path)
-    # print 'query_centers.shape =', query_centers.shape
-    # query_centers = query_centers[0:1000]
-    # K = 10
-    # all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(
-    #     query_centers, K, ideal=None)
-    # node_indices_list = np.array(node_indices_list).transpose()
-    # # B = my_idx.lat_reg.B[K]
-    #
-    # for i in range(len(all_queried_keys)):
-    #     # print '--------------------', i, '-------------------------'
-    #     queried_keys = all_queried_keys[i]
-    #     node_indices = node_indices_list[i]
-    #     # print radiuses[i], init_radiuses[i]
-    #     # print queried_keys.shape
-    #     n_pages = n_pages_every_query[i]
-    #     print n_pages
-    #
-    #     # print B[node_indices]
-    # print total_n_pages
-
-
-
-# if __name__ == '__main__':
-#     tf.app.run()

@@ -101,18 +101,8 @@ class PiecewiseModel:
     def lr_search(self, s, init_betas, init_loss):
         init_lr = 1.
 
-        # lrs = [0.00001, 0.0001, 0.01, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8]
         lrs = [0.0001, 0.001, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8]
-        # lrs = [0, 001, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8]
-        # lrs = []
-        # # for i in range(1, 6):
-        # #     lrs.append(i * 0.2 * init_lr)
-        # # lrs.extend([0.025, 0.01, 0.001, 0.0005, 0.0001, 1e-5, 1e-6, 4, 8, 16])
-        # lrs.extend([0,001, 0.01, 0.05, 0.1, 0.5, 1, 2, 4, 8])
 
-        # for i in range(8, 20):
-        #     lrs.append(i * 0.05 * init_lr)
-        # lrs.extend([0.01, 8])
 
         losses = []
         beta_list = []
@@ -212,13 +202,13 @@ class PiecewiseModel:
 
 
 
-    def train(self):
+    def train2(self):
         self.betas = np.zeros(shape=[self.sigma], dtype=np.float64)
         self.alphas = np.zeros(shape=[self.sigma], dtype=np.float64)
 
 
 
-    def train2(self):
+    def train(self):
         n_each_cell = int(self.sorted_mappings.shape[0] / self.sigma)
         split_idxes = np.arange(0, self.sigma, dtype=np.int64) * n_each_cell
         self.betas = self.sorted_mappings[split_idxes].reshape([-1])
@@ -226,15 +216,9 @@ class PiecewiseModel:
         self.init_alphas = self.cal_init_alphas(self.init_betas)
 
 
-        # print '----------check betas-----------'
-        # check_order(self.betas)
-        # print '----------check betas finished-----------'
-
         k = 0
 
         while True:
-            # print '---------------col_id =', self.id, ', k =', k, '----------------'
-
             betas = self.betas
             # assert betas is not None
             alphas_1, A = self.cal_alphas(betas)
@@ -247,7 +231,6 @@ class PiecewiseModel:
             init_loss = init_loss_1
             alphas = alphas_1
             if self.check_if_alphas_and_betas_valid(alphas_1, betas) == False:
-                # print '****************hahaha'
                 alphas = self.cal_alphas_with_monotone_constrain(betas, alphas_1)
                 init_loss = self.cal_loss(A, alphas)
                 # alphas = alphas_2
@@ -327,20 +310,18 @@ class PiecewiseModel:
                         # print 'avg_diff =', np.average(diff)
                         break
 
-            if k % 100 == 0:
-                print '---------------col_id =', self.id, ', k =', k, '----------------'
-                print 'xloss =', loss
+            # if k % 100 == 0:
+            #     print '---------------col_id =', self.id, ', k =', k, '----------------'
+            #     print 'xloss =', loss
 
             k += 1
-            if k >= 400:
+            if k >= 200:
                 break
 
 
     def check_if_valid(self):
-        print '*************************'
         epison = 1e-6
         np_utils.check_order(self.predict_idxes(self.betas, self.betas))
-        print '*************************'
         y_pred = self.A.dot(self.alphas)
         np_utils.check_order(y_pred)
 
@@ -369,7 +350,6 @@ class PiecewiseModel:
         flag = (betas_diff.min() > 0)
 
         if flag == False:
-            print '************betas is error'
             return flag
         alphas_cumsum = np.cumsum(alphas)
         min_slope = alphas_cumsum.min()
@@ -422,195 +402,3 @@ class myThread(threading.Thread):
                 FileViewer.detect_and_delete_dir(model_dir)
                 print 'thread_id =', self.thread_id, ', model', col_id, 'encountered exception'
 
-
-
-if __name__ == '__main__':
-    Config(Config().home_dir)
-
-    one_dim_mappings = np.load(os.path.join(Config().data_dir, 'one_dim_mappings.npy'))
-    print '----------dtype =', one_dim_mappings.dtype, one_dim_mappings.shape
-    print one_dim_mappings.max(), one_dim_mappings.min()
-    col_split_idxes = np.load(os.path.join(Config().data_dir, 'col_split_idxes.npy'))
-    print col_split_idxes[0:10]
-    print col_split_idxes[-10:]
-    print '-------', col_split_idxes.shape
-    n_cols = col_split_idxes.shape[0]
-    print '----n_cols =', n_cols
-    # n_cells_each_cols = one_dim_mappings.shape[0] / n_cols / (Config().page_size * 0.8)
-
-    sigma = Config().sigma
-    params_dir = os.path.join(Config().models_dir, 'piecewise')
-    params_dir = os.path.join(params_dir, 'cols')
-    FileViewer.detect_and_create_dir(params_dir)
-
-    # n_threads = 32
-    # mappings_list = [[]] * n_threads
-    # col_ids = [[]] * n_threads
-    #
-    # start = 0
-    # for i in range(col_split_idxes.shape[0]):
-    #     end = col_split_idxes[i]
-    #     one_dim_input = one_dim_mappings[start:end]
-    #     mappings_list[i % n_threads].append(one_dim_input)
-    #     col_ids[i % n_threads].append(i)
-    #     start = end
-    #
-    # threads = []
-    # for i in range(n_threads):
-    #     t = myThread(i, sigma, col_ids[i], mappings_list[i], params_dir)
-    #     threads.append(t)
-    #
-    # for t in threads:
-    #     t.start()
-
-    # for i in range(646, 647):
-    start = 0
-    # for i in range(1,1):
-    for i in range(849, col_split_idxes.shape[0]):
-    # for i in range(151, 151):
-    # for i in range(1167, 500, -1):
-    # for i in range(col_split_idxes.shape[0] - 1, -1, -1):
-    # for i in range(col_split_idxes.shape[0] - 1, 700, -1):
-    # for i in range(col_split_idxes.shape[0]):
-        # for i in range(col_split_idxes.shape[0], col_split_idxes.shape[0]):
-        if i > 0:
-            start = col_split_idxes[i - 1]
-        end = col_split_idxes[i]
-        one_dim_input = one_dim_mappings[start:end]
-        pm = PiecewiseModel(i, one_dim_input, sigma)
-        model_dir = os.path.join(params_dir, str(i))
-        if os.path.exists(model_dir) == False:
-            # print '---i =', i
-            # try:
-            #     pm.train()
-            #     FileViewer.detect_and_create_dir(model_dir)
-            #     pm.save(model_dir)
-            #     print ', model', i, 'has been trained'
-            # except:
-            #     FileViewer.detect_and_delete_dir(model_dir)
-            #     print ', model', i, 'encountered exception'
-
-            pm.train()
-            FileViewer.detect_and_create_dir(model_dir)
-            pm.save(model_dir)
-            print ', model', i, 'has been trained'
-
-
-
-    # start = 0
-    # # for i in range(1,1):
-    # # for i in range(259, col_split_idxes.shape[0]):
-    # # for i in range(151, 151):
-    # # for i in range(1167, 500, -1):
-    # # for i in range(col_split_idxes.shape[0]-1,-1,-1):
-    # for i in range(col_split_idxes.shape[0]):
-    # # for i in range(col_split_idxes.shape[0], col_split_idxes.shape[0]):
-    #     if i > 0:
-    #         start = col_split_idxes[i-1]
-    #     end = col_split_idxes[i]
-    #     one_dim_input = one_dim_mappings[start:end]
-    #     pm = PiecewiseModel(i, one_dim_input, sigma)
-    #     model_dir = os.path.join(params_dir, str(i))
-    #
-    #     # pm.train()
-    #     # FileViewer.detect_and_create_dir(model_dir)
-    #     # pm.save(model_dir)
-    #     # print ', model', i, 'has been trained'
-    #     try:
-    #         pm.train()
-    #         FileViewer.detect_and_create_dir(model_dir)
-    #         pm.save(model_dir)
-    #         print ', model', i, 'has been trained'
-    #     except:
-    #         FileViewer.detect_and_delete_dir(model_dir)
-    #         print ', model', i, 'encountered exception'
-    #
-    #     # pred_idxes = pm.predict_idxes()
-    #     # print pred_idxes[-50:]
-    #     # pred_idxes = (pred_idxes / Config().page_size).astype(np.int64)
-    #     # max_cell_id = pred_idxes.max()
-    #     # entries_count = [0] * (max_cell_id + 1)
-    #     # for i in range(pred_idxes.shape[0]):
-    #     #     idx = int(pred_idxes[i])
-    #     #     entries_count[idx] += 1
-    #     # print entries_count
-    #     # print max_cell_id
-    #
-    #     # pm.train()
-    #     # FileViewer.detect_and_create_dir(model_dir)
-    #     # pm.save(model_dir)
-    #
-    # start = 0
-    # for i in range(col_split_idxes.shape[0]):
-    #     end = col_split_idxes[i]
-    #     model_dir = os.path.join(params_dir, str(i))
-    #     flag = PiecewiseModel.check(model_dir)
-    #     if flag == False:
-    #         print '--------------------i =', i, '----------------------'
-    #         one_dim_input = one_dim_mappings[start:end]
-    #         pm = PiecewiseModel(i, one_dim_input, sigma)
-    #         # try:
-    #         #     # FileViewer.detect_and_delete_dir(model_dir)
-    #         #     pm.train()
-    #         #     FileViewer.detect_and_create_dir(model_dir)
-    #         #     pm.save(model_dir)
-    #         #     print ', model', i, 'has been trained'
-    #         # except:
-    #         #     FileViewer.detect_and_delete_dir(model_dir)
-    #         #     print ', model', i, 'encountered exception'
-    #
-    #         # pm.train()
-    #         # FileViewer.detect_and_create_dir(model_dir)
-    #         # pm.save(model_dir)
-    #
-    #     start = end
-    #
-    # print '---------------'
-    #
-    # for i in range(col_split_idxes.shape[0]):
-    # # for i in range(309, col_split_idxes.shape[0]):
-    #     if i == 0:
-    #         start = 0
-    #     else:
-    #         start = col_split_idxes[i-1]
-    #     end = col_split_idxes[i]
-    #     model_dir = os.path.join(params_dir, str(i))
-    #     flag = PiecewiseModel.check(model_dir)
-    #     if flag == False:
-    #         print '--------------------i =', i, '----------------------'
-    #         # one_dim_input = one_dim_mappings[start:end]
-    #         # pm = PiecewiseModel(i, one_dim_input, sigma)
-    #         # pm.train()
-    #         # FileViewer.detect_and_create_dir(model_dir)
-    #         # pm.save(model_dir)
-    #
-    #         # try:
-    #         #     # FileViewer.detect_and_delete_dir(model_dir)
-    #         #     pm.train()
-    #         #     FileViewer.detect_and_create_dir(model_dir)
-    #         #     pm.save(model_dir)
-    #         #     print ', model', i, 'has been trained'
-    #         # except:
-    #         #     # FileViewer.detect_and_delete_dir(model_dir)
-    #         #     print ', model', i, 'encountered exception'
-    #
-    #     # one_dim_input = one_dim_mappings[start:end]
-    #     # pm = PiecewiseModel(i, one_dim_input, sigma)
-    #     # pm.load(model_dir)
-    #     # loss = pm.loss()
-    #     # # if loss > 3.9e7:
-    #     # if loss > 1e8:
-    #     #     print '------------------------i =', i, 'loss =', loss
-    #     #     try:
-    #     #         pm.train()
-    #     #         FileViewer.detect_and_create_dir(model_dir)
-    #     #         pm.save(model_dir)
-    #     #         print 'model', i, 'has been trained'
-    #     #     except:
-    #     #         # FileViewer.detect_and_delete_dir(model_dir)
-    #     #         print 'model', i, 'encountered exception'
-    #
-    #
-    #     start = end
-    #
-    # print '---------------'

@@ -21,8 +21,6 @@ class Config(object):
                 directory path to store trained models.
             data_dir : string, optional (default='data/')
                 directory path to store model generated data.
-            logs_dir : string, optional (default='logs/')
-                directory path to store yadlt and tensorflow logs.
             """
             self.home_dir = home_dir
             self.models_dir = os.path.join(self.home_dir, models_dir)

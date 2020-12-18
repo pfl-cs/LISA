@@ -37,7 +37,6 @@ def get_split_points_and_idxes(x_data, N, max_value=None, type='data_partition')
 
 
 def partition(data, dim, start, end, n_parts, split_points_list, split_idxes_list, max_value_each_dim):
-    # print 'dim =', dim, 'start =', start, 'end =', end
     part_data = data[start:end]
     one_dim_data = part_data[:, dim]
     sorted_idxes = np.argsort(one_dim_data)
@@ -45,13 +44,9 @@ def partition(data, dim, start, end, n_parts, split_points_list, split_idxes_lis
     one_dim_data = data[start:end, dim]
 
     split_points, split_idxes = get_split_points_and_idxes(one_dim_data, n_parts, max_value=max_value_each_dim)
-    # print 'split_idxes =', split_idxes
     split_points_list[dim].append(split_points)
     split_idxes += start
     split_idxes_list[dim].append(split_idxes)
-    # print '----dim =', dim,  split_idxes
-    # print '********', split_idxes_list[0]
-    # print '&&&&&&&&', split_idxes_list[1]
 
     next_dim_start = start
     for i in range(split_idxes.shape[0]):
@@ -91,7 +86,6 @@ def create_borders(split_points_list):
             start += tmp.shape[0]
         dim += 1
 
-    # print '&&&&&&&&&&', all_cell_measures.min(), all_cell_measures.max()
     return borders, all_cell_measures
 
 
@@ -108,12 +102,6 @@ def generate_grid_cells(data, n_parts_each_dim, n_models, min_value_each_dim, ma
 
     partition(data, 0, 0, size, n_parts_each_dim, split_upper_bounds_list, split_idxes_list, max_value_each_dim)
 
-    # print len(split_upper_bounds_list)
-    # print len(split_upper_bounds_list[0])
-    # print len(split_upper_bounds_list[1])
-    # print len(split_upper_bounds_list[2])
-    # print split_upper_bounds_list[0]
-    # print split_upper_bounds_list[1]
     borders, all_cell_measures = create_borders(split_upper_bounds_list)
     print 'borders.shape =', borders.shape
 
@@ -155,15 +143,6 @@ def generate_grid_cells(data, n_parts_each_dim, n_models, min_value_each_dim, ma
                 start = end
             cell_id += 1
 
-    print '************max_measure =', max_measure
-    print '---------n_models =', n_models
-
-    # sorted_idxes = np.argsort(mappings)
-    # data = data[sorted_idxes]
-    # mappings = mappings[sorted_idxes]
-    # all_cell_ids = all_cell_ids[sorted_idxes]
-
-    # split_mappings = np.arange(1, n_models + 1) * 1. * n_grids_each_model
     max_mapping = math.pow(n_parts_each_dim, data.shape[1])
     split_mappings = np.zeros(shape=[n_models], dtype=data.dtype)
     split_mappings[-1] = max_mapping + 1
@@ -175,11 +154,6 @@ def generate_grid_cells(data, n_parts_each_dim, n_models, min_value_each_dim, ma
         split_mappings[i - 1] = m
 
     split_idxes = np.searchsorted(mappings, split_mappings, side='right')
-    # print '-------------split_idxes--------------', split_idxes.shape
-    # print split_idxes
-    print '--------------mappings----------------'
-    print mappings[0:10]
-    print mappings[-10:]
 
     model_split_mappings = np.zeros(shape=[split_idxes.shape[0]])
     model_split_mappings[0:-1] = mappings[split_idxes[0:-1]]

@@ -50,7 +50,6 @@ def list_to_str(l, sep=' ', use_unicode=False):
 #             s = s + sep + str(item)
 #     return s
 
-# 如果第一个字母是#,则去掉
 def remove_first_pound(s):
     if s[0] == '#':
         return s[1:]

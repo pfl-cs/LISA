@@ -237,31 +237,3 @@ class LatticeRegression:
         self.L = load_npz(L_path)
         print 'L.shape =', self.L.shape
         self.get_metadata()
-
-
-
-
-if __name__ == '__main__':
-    home_dir = '/home/pfl/LearnedIndex/4d_uniform'
-    Config(home_dir)
-    n_lattices_each_dim = Config().n_nodes_each_dim
-    model_dir = os.path.join(Config().models_dir, 'lattice_regression')
-    model_dir = os.path.join(model_dir, str(n_lattices_each_dim))
-    FileViewer.detect_and_create_dir(model_dir)
-    lattice_dir = os.path.join(Config().data_dir, 'lattice')
-    lattice_dir = os.path.join(lattice_dir, str(n_lattices_each_dim))
-    lat_reg = LatticeRegression()
-    lat_reg.train(lattice_dir)
-    # lat_reg.save(model_dir)
-
-    # lat_reg.load(model_dir)
-    # B = lat_reg.B.transpose()
-    # print B[200:210]
-    # lat_reg.save(model_dir)
-
-    # lat_reg.load(model_dir)
-    # # lat_reg.A = np.load("/home/pfl/DB_ML/LearnedIndex/3d_synthetic/data/lattice/50/lattice_nodes.npy").transpose()
-    # # print lat_reg.A.shape
-    # # print lat_reg.A[-1,0:10]
-    # lat_reg.save(model_dir)
-

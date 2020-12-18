@@ -12,7 +12,7 @@ from src.solution.LISA import LISA
 from src.solution.piecewise_linear_curve_fit import PiecewiseModel
 from src.FLAGS_DEFINE import *
 import math
-# from lattice_regression import LatticeRegression
+from src.solution.lattice_regression import LatticeRegression
 
 def query_ranges_gen(start_low, start_high, offset_low, offset_high, max_value, dim, n):
     qr_list = []
@@ -97,20 +97,75 @@ def bulk_loading(raw_data, temp_dir):
         # my_idx.set_model_dir(LISA_dir)
         my_idx.save()
 
-    return my_idx
+    if one_dim_mappings is None:
+        one_dim_mappings = np.load(one_dim_mappings_path)
+
+    sorted_data = np.load(sorted_data_path)
+
+    return my_idx, one_dim_mappings, sorted_data
 
 
+def save_lattice_info(data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses,
+                      n_nodes_each_dim):
+    lattice_dir = os.path.join(data_dir, 'lattice')
+    lattice_dir = os.path.join(lattice_dir, str(n_nodes_each_dim))
+    FileViewer.detect_and_create_dir(lattice_dir)
+    lattice_nodes_path = os.path.join(lattice_dir, 'lattice_nodes.npy')
+    nodes_radiuses_path = os.path.join(lattice_dir, 'nodes_radiuses.npy')
+    lattice_training_points_path = os.path.join(lattice_dir, 'training_points.npy')
+    lattice_training_radiuses_path = os.path.join(lattice_dir, 'training_radiuses.npy')
+    np.save(lattice_nodes_path, lattice_nodes)
+    np.save(nodes_radiuses_path, nodes_radiuses)
+    np.save(lattice_training_points_path, lattice_training_points)
+    np.save(lattice_training_radiuses_path, lattice_training_radiuses)
+
+
+def lattice_regression_preprocessing(my_idx):
+    n_nodes_each_dim = Config().n_nodes_each_dim
+    lattice_data_dir = os.path.join(Config().data_dir, 'lattice')
+    lattice_data_dir = os.path.join(lattice_data_dir, str(n_nodes_each_dim))
+    FileViewer.detect_and_create_dir(lattice_data_dir)
+
+    lattice_nodes_path = os.path.join(lattice_data_dir, 'lattice_nodes.npy')
+    nodes_radiuses_path = os.path.join(lattice_data_dir, 'nodes_radiuses.npy')
+    lattice_training_points_path = os.path.join(lattice_data_dir, 'training_points.npy')
+    lattice_training_radiuses_path = os.path.join(lattice_data_dir, 'training_radiuses.npy')
+
+    knn_testing_points_path = os.path.join(lattice_data_dir, 'testing_points.npy')
+
+    lattice_nodes = my_idx.lattice_nodes_gen(n_nodes_each_dim)
+    lattice_training_points = my_idx.lattice_training_data_gen(lattice_nodes.shape[0] * 40)
+    knn_testing_points = my_idx.lattice_training_data_gen(lattice_nodes.shape[0] * 10)
+
+    np.save(lattice_nodes_path, lattice_nodes)
+    np.save(lattice_training_points_path, lattice_training_points)
+    np.save(knn_testing_points_path, knn_testing_points)
+
+    nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, n_nodes_each_dim, 20)
+    lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, n_nodes_each_dim, 20)
+    np.save(nodes_radiuses_path, nodes_radiuses)
+    np.save(lattice_training_radiuses_path, lattice_training_radiuses)
+
+    # my_idx.save_lattice_info(Config().data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses, n_nodes_each_dim)
+
+    n_lattices_each_dim = Config().n_nodes_each_dim
+    lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
+    lattice_model_dir = os.path.join(lattice_model_dir, str(n_lattices_each_dim))
+    FileViewer.detect_and_create_dir(lattice_model_dir)
+    lat_reg = LatticeRegression()
+    lat_reg.train(lattice_data_dir)
+    lat_reg.save(lattice_model_dir)
 
 
 if __name__ == '__main__':
 
-    home_dir = '/home/pfl/LearnedIndex/4d_uniform'
-    Config(home_dir)
+    workspace = '4d_uniform'
+    Config(workspace)
     print 'home_dir =', Config().home_dir
     print 'data_dir =', Config().data_dir
     temp_dir = Config().data_dir
     raw_data = np.load(os.path.join(temp_dir, 'data_0.npy'))
-    my_idx = bulk_loading(raw_data, temp_dir)
+    my_idx, one_dim_mappings, sorted_data = bulk_loading(raw_data, temp_dir)
     # total_pages = my_idx.query_single_thread(query_ranges)
 
     query_range_path = os.path.join(Config().data_dir, Config().query_range_path)
@@ -119,101 +174,21 @@ if __name__ == '__main__':
     for line in query_range_strs:
         query_ranges.append([float(i) for i in line.strip().split(' ')])
     query_ranges = np.array(query_ranges, dtype=np_data_type())
+    n_pages, n_entries = my_idx.query_single_thread(query_ranges)
 
 
 
+    #--------------KNN query--------------------
 
-    # n_nodes_each_dim = Config().n_nodes_each_dim
-    # lattice_dir = os.path.join(Config().data_dir, 'lattice')
-    # lattice_dir = os.path.join(lattice_dir, str(n_nodes_each_dim))
-    # FileViewer.detect_and_create_dir(lattice_dir)
-    # lattice_nodes_path = os.path.join(lattice_dir, 'lattice_nodes.npy')
-    # nodes_radiuses_path = os.path.join(lattice_dir, 'nodes_radiuses.npy')
-    # lattice_training_points_path = os.path.join(lattice_dir, 'training_points.npy')
-    #
-    # lattice_training_radiuses_path = os.path.join(lattice_dir, 'training_radiuses.npy')
-    #
-    # lattice_testing_points_path = os.path.join(lattice_dir, 'testing_points.npy')
-    #
-    # my_idx = LISA(params=params, data_dim=Config().data_dim, page_size=Config().page_size, sigma=Config().sigma)
-    # model_dir = my_idx.model_dir
-    # half_model_dir = os.path.join(model_dir, 'half')
-    # my_idx.set_model_dir(half_model_dir)
-    # my_idx.load()
-    # # lattice_nodes = my_idx.lattice_nodes_gen(n_nodes_each_dim)
-    # # print '--------lattice_nodes.shape =', lattice_nodes.shape
-    # # lattice_training_points = my_idx.lattice_training_data_gen(lattice_nodes.shape[0] * 40)
-    # # print '--------lattice_training_points.shape =', lattice_training_points.shape
-    # # np.save(lattice_nodes_path, lattice_nodes)
-    # # np.save(lattice_training_points_path, lattice_training_points)
-    # #
-    # # lattice_training_points = np.load(lattice_training_points_path)
-    # # print lattice_training_points[0:10]
-    # # print lattice_training_points.shape
-    #
-    #
-    #
-    # # nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, n_nodes_each_dim, 20)
-    # # print '----------------------------------------'
-    # # lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, n_nodes_each_dim, 20)
-    # # np.save(nodes_radiuses_path, nodes_radiuses)
-    # # np.save(lattice_training_radiuses_path, lattice_training_radiuses)
-    # #
-    # # save_lattice_info(Config().data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses, n_nodes_each_dim)
-    #
     # lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
-    # lattice_model_dir = os.path.join(lattice_model_dir, str(n_nodes_each_dim))
-    #
-    # ideal_path = os.path.join(lattice_model_dir, 'training_Y.npy')
-    # ideal = np.load(ideal_path).transpose()
-    # print 'ideal.shape =', ideal.shape
+    # lattice_model_dir = os.path.join(lattice_model_dir, str(Config().n_nodes_each_dim))
     # my_idx.load_knn_model(lattice_model_dir)
     #
-    # query_centers = np.load(lattice_training_points_path)
-    # query_centers = query_centers[0:10000]
-    # ideal = ideal[0:10000]
-    # # ideal = ideal[:,9]
-    # K = 10
-    # all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(query_centers, K, ideal)
-    # # node_indices_list = np.array(node_indices_list).transpose()
-    # # # B = my_idx.lat_reg.B[K]
-    # #
-    # test_centers = []
-    # # for i in range(len(all_queried_keys)):
-    # for i in range(100):
-    #     print '--------------------', i, '-------------------------'
-    #     queried_keys = all_queried_keys[i]
-    #     node_indices = node_indices_list[i]
-    #     print radiuses[i], init_radiuses[i]
-    #     print queried_keys.shape
-    #     n_pages = n_pages_every_query[i]
-    #     print n_pages
-
-    # print B[node_indices]
-    # print total_n_pages
-    # test_centers = np.array(test_centers, dtype=query_centers.dtype)
-    # print test_centers.shape
-    # np.save(lattice_testing_points_path, test_centers)
-
-    # my_idx.load_knn_model(lattice_model_dir)
     #
-    # query_centers = np.load(lattice_testing_points_path)
-    # print 'query_centers.shape =', query_centers.shape
-    # query_centers = query_centers[0:1000]
+    # lattice_data_dir = os.path.join(Config().data_dir, 'lattice')
+    # lattice_data_dir = os.path.join(lattice_data_dir, str(Config().n_nodes_each_dim))
+    # knn_testing_points_path = os.path.join(lattice_data_dir, 'testing_points.npy')
+    # query_centers = np.load(knn_testing_points_path)
     # K = 10
     # all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(
-    #     query_centers, K, ideal=None)
-    # node_indices_list = np.array(node_indices_list).transpose()
-    # # B = my_idx.lat_reg.B[K]
-    #
-    # for i in range(len(all_queried_keys)):
-    #     # print '--------------------', i, '-------------------------'
-    #     queried_keys = all_queried_keys[i]
-    #     node_indices = node_indices_list[i]
-    #     # print radiuses[i], init_radiuses[i]
-    #     # print queried_keys.shape
-    #     n_pages = n_pages_every_query[i]
-    #     print n_pages
-    #
-    #     # print B[node_indices]
-    # print total_n_pages
+    #     query_centers, K)
