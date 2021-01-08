@@ -41,4 +41,6 @@ The details of the hardwares we used for the experiments are shown as follows.
 ### More
 The LISA is saved in the same directory with the corresponding dataset. If you want to test LISA on other datasets, you need to create a new directory $Dir$ under "$Workspace$/LISA/" and put the dataset into "$Workspace$/LISA/$Dir$/data/".
 
+We will update the [repo] (https://github.com/pfl-cs/LISA) if any modifications are made in the future.
+
 
