@@ -41,11 +41,12 @@ class Config(object):
             self.eta = 0.01
             self.page_size = 60
             self.min_value = 0
-            self.static_data_name = "data_1.npy" # static data path
-            self.data_to_insert_name = "data_2.npy" # data to insert
+            self.static_data_name = "data_0.npy" # static data path
+            self.data_to_insert_name = "data_2.npy"  # data to insert
+            self.data_to_delete_name = "data_3.npy"  # data to delete
             self.lr = 1e-1
             self.query_range_path = "query_ranges.txt"
-            print '---------Config is initilized and final----------'
+            print '---------Config is initilized----------'
 
     instance = None
 

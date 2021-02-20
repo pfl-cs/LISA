@@ -159,7 +159,7 @@ def lattice_regression_preprocessing(my_idx):
 
 if __name__ == '__main__':
 
-    workspace = '4d_uniform'
+    workspace = '~/workspace/LISA/4d_uniform'
     Config(workspace)
     print 'home_dir =', Config().home_dir
     print 'data_dir =', Config().data_dir
@@ -168,17 +168,16 @@ if __name__ == '__main__':
     my_idx, one_dim_mappings, sorted_data = bulk_loading(raw_data, temp_dir)
     # total_pages = my_idx.query_single_thread(query_ranges)
 
+    # --------------range query--------------------
     query_range_path = os.path.join(Config().data_dir, Config().query_range_path)
     query_range_strs = FileViewer.load_list(query_range_path)
     query_ranges = []
     for line in query_range_strs:
         query_ranges.append([float(i) for i in line.strip().split(' ')])
     query_ranges = np.array(query_ranges, dtype=np_data_type())
-    n_pages, n_entries = my_idx.query_single_thread(query_ranges)
+    n_pages, n_entries = my_idx.range_query(query_ranges)
 
-
-
-    #--------------KNN query--------------------
+    # --------------KNN query--------------------
 
     # lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
     # lattice_model_dir = os.path.join(lattice_model_dir, str(Config().n_nodes_each_dim))
@@ -192,3 +191,15 @@ if __name__ == '__main__':
     # K = 10
     # all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(
     #     query_centers, K)
+
+    # ---------------insert-----------------------
+    # data_to_insert = np.load(os.path.join(temp_dir, 'data_1.npy'))
+    # my_idx.insert(data_to_insert)
+
+    # ---------------delete-----------------------
+    # data_to_delete = np.load(os.path.join(temp_dir, 'data_2.npy'))
+    # my_idx.delete(data_to_delete)
+
+
+
+

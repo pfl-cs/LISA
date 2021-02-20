@@ -476,7 +476,7 @@ class LISA():
 
         return query_page_nos
 
-    def query_single_thread(self, query_ranges):
+    def range_query(self, query_ranges):
         query_page_nos = self.get_query_page_nos(query_ranges)
         # print 'query_page_nos = ', query_page_nos
         n_entries_each_query = np.zeros(shape=[query_ranges.shape[0]], dtype=np_idx_type())
