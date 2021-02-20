@@ -14,7 +14,7 @@ The codes can be found [here](https://github.com/pfl-cs/LISA).
 
 The input data for building LISA is a numpy ndarray file whose shape is NxD where D and N are the dimension and the number of the input keys, respectively.
 
-We prepared two 4-dimensional datasets for validating our approach. [data_0.npy] (https://pan.zju.edu.cn/share/c34732c0b5cdf3a338521820ef) is used for building LISA; [data_2.npy] (https://pan.zju.edu.cn/share/33333f0ca93113fc0aa3b77d9e) is used for analyzing how LISA and perform if we insert new keys.
+We prepared three 4-dimensional datasets for validating our approach. [data_0.npy](https://pan.zju.edu.cn/share/c34732c0b5cdf3a338521820ef) is used for building LISA; [data_2.npy](https://pan.zju.edu.cn/share/33333f0ca93113fc0aa3b77d9e) and [data_3.npy](https://pan.zju.edu.cn/share/830cf9a821beba9534ae398757) are used for analyzing how LISA performs if we insert and delete keys, respectively.
 
 ### Hardware Info
 The details of the hardwares we used for the experiments are shown as follows.
@@ -34,13 +34,13 @@ The details of the hardwares we used for the experiments are shown as follows.
 
 2) Clone the [repository](https://github.com/pfl-cs/LISA) under a directory $Workspace$.
 
-3) Download [data_0.npy] (https://pan.zju.edu.cn/share/ca8517137bf7a761f8c890a80b), [data_2.npy] (https://pan.zju.edu.cn/share/ceb81197252d392b27ee9fa6bc) and [data_3.npy] (https://pan.zju.edu.cn/share/830cf9a821beba9534ae398757). Put them in the directory $Workspace$/LISA/4d_uniform/data/.
+3) Download [data_0.npy](https://pan.zju.edu.cn/share/ca8517137bf7a761f8c890a80b), [data_2.npy](https://pan.zju.edu.cn/share/ceb81197252d392b27ee9fa6bc) and [data_3.npy](https://pan.zju.edu.cn/share/830cf9a821beba9534ae398757). Put them in the directory $Workspace$/LISA/4d_uniform/data/.
 
 4) cd $Workspace$/LISA/src and run main.py
 
 ### More
 The LISA is saved in the same directory with the corresponding dataset. If you want to test LISA on other datasets, you need to create a new directory $Dir$ under "$Workspace$/LISA/" and put the dataset into "$Workspace$/LISA/$Dir$/data/".
 
-We will update the [repo] (https://github.com/pfl-cs/LISA) if any modifications are made in the future.
+We will update the [repo](https://github.com/pfl-cs/LISA) if any modifications are made in the future.
 
 
