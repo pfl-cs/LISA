@@ -22,7 +22,7 @@ class LISA():
         self.data_dim = data_dim
         self.name = name
         self.model_dir = os.path.join(Config().models_dir, self.name)
-        FileViewer.detect_and_create_dir(self.model_dir)
+        # FileViewer.detect_and_create_dir(self.model_dir)
 
         # all params: data params and tree params
         self.page_size = page_size
@@ -499,10 +499,11 @@ class LISA():
         return n_pages_each_query, n_entries_each_query
 
     def get_query_keys_within_sphericals(self, query_ranges, centers, radiuses):
-        query_page_nos, time_duration = self.get_query_page_nos(query_ranges)
+        query_page_nos = self.get_query_page_nos(query_ranges)
         query_keys_list = []
         query_key_dists_list = []
         n_pages_list = []
+        assert len(query_page_nos) == centers.shape[0]
         for i in range(len(query_page_nos)):
             # for i in range(1):
             page_nos = query_page_nos[i]
@@ -526,6 +527,8 @@ class LISA():
         query_ranges[:, self.data_dim:] = points + radius
         query_ranges = np.clip(query_ranges, a_min=Config().min_value, a_max=Config().max_value)
 
+        radiuses = np.ones(shape=points.shape[0], dtype=points.dtype) * radius
+
         offset = 100000
         n_iters = int(query_ranges.shape[0] / offset)
         if offset * n_iters < query_ranges.shape[0]:
@@ -540,7 +543,7 @@ class LISA():
             small_query_ranges = query_ranges[start:end]
             _, small_query_key_dists_list, _ = self.get_query_keys_within_sphericals(small_query_ranges,
                                                                                      points[start:end],
-                                                                                     radius)
+                                                                                     radiuses[start:end])
             for j in range(end - start):
                 dists = small_query_key_dists_list[j]
                 if dists.shape[0] >= K:
@@ -549,9 +552,9 @@ class LISA():
 
         return radius_list
 
-    def get_estimate_radiuses(self, lattice_points, n_nodes_each_dim, K):
-        # n_nodes_each_dim = 100
-        radius = (self.max_value_each_dim - self.min_value_each_dim) / n_nodes_each_dim * 2
+    def get_estimate_radiuses(self, lattice_points, tau, K):
+        # tau = 100
+        radius = (self.max_value_each_dim - self.min_value_each_dim) / tau * 2
         radius_list = self.get_radius_for_knn_query(lattice_points, radius, K)
         print '-----lattice_points.shape =', lattice_points.shape
 
@@ -583,10 +586,10 @@ class LISA():
         radiuses = np.array(radius_list)
         return radiuses
 
-    def lattice_nodes_gen(self, n_nodes_each_dim):
-        offset = (self.max_value_each_dim - self.min_value_each_dim) / n_nodes_each_dim
+    def lattice_nodes_gen(self, tau):
+        offset = (self.max_value_each_dim - self.min_value_each_dim) / tau
         node_values = []
-        for i in range(n_nodes_each_dim):
+        for i in range(tau):
             node_values.append(self.min_value_each_dim + i * offset)
         node_values.append(self.max_value_each_dim)
         node_values_list = [np.array(node_values, dtype=np_data_type())] * (self.data_dim)
@@ -594,7 +597,7 @@ class LISA():
         lattice_points = np_utils.cartesian_product(node_values_list)
         return lattice_points
 
-    def lattice_training_data_gen(self, N):
+    def sampling(self, N):
         return np.random.uniform(low=self.min_value_each_dim, high=self.max_value_each_dim, size=[N, self.data_dim])
 
     def knn_query(self, points, K, ideal=None):

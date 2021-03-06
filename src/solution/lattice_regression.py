@@ -237,3 +237,19 @@ class LatticeRegression:
         self.L = load_npz(L_path)
         print 'L.shape =', self.L.shape
         self.get_metadata()
+
+
+
+    @staticmethod
+    def if_need_train(model_dir):
+        A_path = os.path.join(model_dir, 'A.npy')
+        B_path = os.path.join(model_dir, 'B.npy')
+        training_X_path = os.path.join(model_dir, 'training_X.npy')
+        training_Y_path = os.path.join(model_dir, 'training_Y.npy')
+        training_W_path = os.path.join(model_dir, 'training_W.npz')
+        L_path = os.path.join(model_dir, 'L.npz')
+        paths = [A_path, B_path, training_X_path, training_Y_path, training_W_path, L_path]
+        for path in paths:
+            if os.path.exists(path) == False:
+                return True
+        return False

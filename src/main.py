@@ -26,7 +26,7 @@ def query_ranges_gen(start_low, start_high, offset_low, offset_high, max_value, 
     query_ranges = np.array(qr_list)
     return query_ranges
 
-def bulk_loading(raw_data, temp_dir):
+def bulk_loading(raw_data, temp_dir, model_dir_init):
     sorted_data_path = os.path.join(temp_dir, Config().static_data_name)
     params_path = os.path.join(temp_dir, Config().cell_params_path)
     preprocessing_flag = True
@@ -37,7 +37,7 @@ def bulk_loading(raw_data, temp_dir):
         # one_dim_mappings_path = os.path.join(data_dir, 'original_one_dim_mappings.npy')
         # cell_measures_path = os.path.join(data_dir, 'cell_measures.npy')
         sorted_data, original_one_dim_mappings, params, cell_measures = layout_utils.generate_grid_cells(raw_data,
-                                                                                                         Config().n_parts_each_dim,
+                                                                                                         Config().T_each_dim,
                                                                                                          Config().n_piecewise_models,
                                                                                                          Config().min_value,
                                                                                                          Config().max_value,
@@ -49,6 +49,7 @@ def bulk_loading(raw_data, temp_dir):
         params = np.load(params_path)
 
     my_idx = LISA(params=params, data_dim=Config().data_dim, page_size=Config().page_size, sigma=Config().sigma)
+    my_idx.set_model_dir(model_dir_init)
 
     one_dim_mappings_path = os.path.join(Config().data_dir, 'one_dim_mappings.npy')
     col_split_idxes_path = os.path.join(Config().data_dir, 'col_split_idxes.npy')
@@ -73,7 +74,9 @@ def bulk_loading(raw_data, temp_dir):
         sigma = Config().sigma
         FileViewer.detect_and_create_dir(piecewise_params_dir)
 
+        print 'n_models =', n_models
         start = 0
+        # for i in range(n_models - 1, 0, -1):
         for i in range(n_models):
             if i > 0:
                 start = col_split_idxes[i - 1]
@@ -85,6 +88,8 @@ def bulk_loading(raw_data, temp_dir):
                 pm.train()
                 FileViewer.detect_and_create_dir(model_dir)
                 pm.save(model_dir)
+            print i, 'finished'
+
 
 
     build_LISA_flag = my_idx.check_and_load_params()
@@ -94,7 +99,6 @@ def bulk_loading(raw_data, temp_dir):
         if one_dim_mappings is None:
             one_dim_mappings = np.load(one_dim_mappings_path)
         my_idx.generate_pages(sorted_data, one_dim_mappings, col_split_idxes)
-        # my_idx.set_model_dir(LISA_dir)
         my_idx.save()
 
     if one_dim_mappings is None:
@@ -105,100 +109,126 @@ def bulk_loading(raw_data, temp_dir):
     return my_idx, one_dim_mappings, sorted_data
 
 
-def save_lattice_info(data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses,
-                      n_nodes_each_dim):
-    lattice_dir = os.path.join(data_dir, 'lattice')
-    lattice_dir = os.path.join(lattice_dir, str(n_nodes_each_dim))
-    FileViewer.detect_and_create_dir(lattice_dir)
-    lattice_nodes_path = os.path.join(lattice_dir, 'lattice_nodes.npy')
-    nodes_radiuses_path = os.path.join(lattice_dir, 'nodes_radiuses.npy')
-    lattice_training_points_path = os.path.join(lattice_dir, 'training_points.npy')
-    lattice_training_radiuses_path = os.path.join(lattice_dir, 'training_radiuses.npy')
-    np.save(lattice_nodes_path, lattice_nodes)
-    np.save(nodes_radiuses_path, nodes_radiuses)
-    np.save(lattice_training_points_path, lattice_training_points)
-    np.save(lattice_training_radiuses_path, lattice_training_radiuses)
-
-
-def lattice_regression_preprocessing(my_idx):
-    n_nodes_each_dim = Config().n_nodes_each_dim
-    lattice_data_dir = os.path.join(Config().data_dir, 'lattice')
-    lattice_data_dir = os.path.join(lattice_data_dir, str(n_nodes_each_dim))
+def lattice_regression_preprocessing(my_idx, tau, lattice_data_dir):
     FileViewer.detect_and_create_dir(lattice_data_dir)
 
     lattice_nodes_path = os.path.join(lattice_data_dir, 'lattice_nodes.npy')
     nodes_radiuses_path = os.path.join(lattice_data_dir, 'nodes_radiuses.npy')
     lattice_training_points_path = os.path.join(lattice_data_dir, 'training_points.npy')
     lattice_training_radiuses_path = os.path.join(lattice_data_dir, 'training_radiuses.npy')
-
     knn_testing_points_path = os.path.join(lattice_data_dir, 'testing_points.npy')
+    knn_testing_radiuses_path = os.path.join(lattice_data_dir, 'testing_radiuses.npy')
 
-    lattice_nodes = my_idx.lattice_nodes_gen(n_nodes_each_dim)
-    lattice_training_points = my_idx.lattice_training_data_gen(lattice_nodes.shape[0] * 40)
-    knn_testing_points = my_idx.lattice_training_data_gen(lattice_nodes.shape[0] * 10)
+    paths = [lattice_nodes_path, nodes_radiuses_path, lattice_training_points_path,
+             lattice_training_radiuses_path, knn_testing_points_path, knn_testing_radiuses_path]
 
-    np.save(lattice_nodes_path, lattice_nodes)
-    np.save(lattice_training_points_path, lattice_training_points)
-    np.save(knn_testing_points_path, knn_testing_points)
+    flag = False
+    for path in paths:
+        if os.path.exists(path) == False:
+            flag = True
+            break
 
-    nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, n_nodes_each_dim, 20)
-    lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, n_nodes_each_dim, 20)
-    np.save(nodes_radiuses_path, nodes_radiuses)
-    np.save(lattice_training_radiuses_path, lattice_training_radiuses)
+    if flag == True:
+        lattice_nodes = my_idx.lattice_nodes_gen(tau)
+        lattice_training_points = my_idx.sampling(lattice_nodes.shape[0] * 40)
+        knn_testing_points = my_idx.sampling(lattice_nodes.shape[0] * 10)
+
+        np.save(lattice_nodes_path, lattice_nodes)
+        np.save(lattice_training_points_path, lattice_training_points)
+        np.save(knn_testing_points_path, knn_testing_points)
+
+        nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, tau, 20)
+        lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, tau, 20)
+        knn_testing_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, tau, 20)
+
+        np.save(nodes_radiuses_path, nodes_radiuses)
+        np.save(lattice_training_radiuses_path, lattice_training_radiuses)
+        np.save(knn_testing_radiuses_path, knn_testing_radiuses)
 
     # my_idx.save_lattice_info(Config().data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses, n_nodes_each_dim)
 
-    n_lattices_each_dim = Config().n_nodes_each_dim
-    lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
-    lattice_model_dir = os.path.join(lattice_model_dir, str(n_lattices_each_dim))
+
+
+
+def lattice_regression_train(my_idx, tau, lattice_data_dir, lattice_model_dir):
+    lattice_regression_preprocessing(my_idx, tau, lattice_data_dir)
     FileViewer.detect_and_create_dir(lattice_model_dir)
     lat_reg = LatticeRegression()
-    lat_reg.train(lattice_data_dir)
-    lat_reg.save(lattice_model_dir)
+    if lat_reg.if_need_train(lattice_model_dir) == True:
+        lat_reg.train(lattice_data_dir)
+        lat_reg.save(lattice_model_dir)
+
 
 
 if __name__ == '__main__':
 
-    workspace = '~/workspace/LISA/4d_uniform'
-    Config(workspace)
+    Config()
     print 'home_dir =', Config().home_dir
     print 'data_dir =', Config().data_dir
     temp_dir = Config().data_dir
     raw_data = np.load(os.path.join(temp_dir, 'data_0.npy'))
-    my_idx, one_dim_mappings, sorted_data = bulk_loading(raw_data, temp_dir)
-    # total_pages = my_idx.query_single_thread(query_ranges)
+    model_dir_init = os.path.join(Config().models_dir, 'LISA_Init')
+    my_idx, one_dim_mappings, sorted_data = bulk_loading(raw_data, temp_dir, model_dir_init)
 
-    # --------------range query--------------------
-    query_range_path = os.path.join(Config().data_dir, Config().query_range_path)
-    query_range_strs = FileViewer.load_list(query_range_path)
+    query_range_strs = FileViewer.load_list(Config().query_range_path)
     query_ranges = []
     for line in query_range_strs:
         query_ranges.append([float(i) for i in line.strip().split(' ')])
     query_ranges = np.array(query_ranges, dtype=np_data_type())
-    n_pages, n_entries = my_idx.range_query(query_ranges)
-
-    # --------------KNN query--------------------
-
-    # lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
-    # lattice_model_dir = os.path.join(lattice_model_dir, str(Config().n_nodes_each_dim))
-    # my_idx.load_knn_model(lattice_model_dir)
+    query_ranges = query_ranges[0:100]
     #
-    #
-    # lattice_data_dir = os.path.join(Config().data_dir, 'lattice')
-    # lattice_data_dir = os.path.join(lattice_data_dir, str(Config().n_nodes_each_dim))
-    # knn_testing_points_path = os.path.join(lattice_data_dir, 'testing_points.npy')
-    # query_centers = np.load(knn_testing_points_path)
-    # K = 10
-    # all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(
-    #     query_centers, K)
+    # Fig 7 & Fig 11: --------------range query on init--------------------
+    # my_idx = LISA()
+    # my_idx.set_model_dir(model_dir_init)
+    # flag = my_idx.check_and_load_params()
+    # assert (flag == True)
+    # total_n_pages, n_entries = my_idx.range_query(query_ranges)
+    # print '#Pages =', total_n_pages
 
-    # ---------------insert-----------------------
-    # data_to_insert = np.load(os.path.join(temp_dir, 'data_1.npy'))
+    # Fig 8 & Fig 12: --------------range query on AI-----------------------
+    # my_idx.set_model_dir(model_dir_init)
+    # my_idx.check_and_load_params()
+    # data_to_insert = np.load(os.path.join(temp_dir, Config().data_to_insert_name))
     # my_idx.insert(data_to_insert)
+    # model_dir_AI = os.path.join(Config().models_dir, 'LISA_AI')
+    # my_idx.set_model_dir(model_dir_AI)
+    # my_idx.save()
+    # total_n_pages, n_entries = my_idx.range_query(query_ranges)
+    # print '#Pages =', total_n_pages
 
-    # ---------------delete-----------------------
-    # data_to_delete = np.load(os.path.join(temp_dir, 'data_2.npy'))
+    # Fig 9: ---------------range query on AD-----------------------
+    # my_idx.set_model_dir(model_dir_AI)
+    # my_idx.check_and_load_params()
+    # data_to_delete = np.load(os.path.join(temp_dir, Config().data_to_delete_name))
     # my_idx.delete(data_to_delete)
+    # model_dir_AD = os.path.join(Config().models_dir, 'LISA_AD')
+    # my_idx.set_model_dir(model_dir_AD)
+    # my_idx.save()
+    # total_n_pages, n_entries = my_idx.range_query(query_ranges)
+    # print '#Pages =', total_n_pages
+
+    # Fig 13: --------------KNN query--------------------
+    my_idx = LISA()
+    my_idx.set_model_dir(model_dir_init)
+    my_idx.check_and_load_params()
+
+    tau = Config().tau
+    lattice_data_dir = os.path.join(Config().data_dir, 'lattice')
+    lattice_data_dir = os.path.join(lattice_data_dir, str(tau))
+    lattice_model_dir = os.path.join(Config().models_dir, 'lattice_regression')
+    lattice_model_dir = os.path.join(lattice_model_dir, str(tau))
+
+    lattice_regression_train(my_idx, tau, lattice_data_dir, lattice_model_dir)
+    my_idx.load_knn_model(lattice_model_dir)
+
+    knn_testing_points_path = os.path.join(lattice_data_dir, 'testing_points.npy')
+    query_centers = np.load(knn_testing_points_path)
+    K = 10
+    all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(
+        query_centers, K)
+    print '#Pages =', total_n_pages
+
+
 
 
 

@@ -212,7 +212,7 @@ def imagenet_data_gen(raw_imagenet_dir, data_dir):
 
 
 if __name__ == '__main__':
-    workspace = '~/workspace/LISA/4d_uniform'
+    workspace = '/home/pfl/workspace/LISA/4d_uniform'
     Config(workspace)
     data_dir = Config().data_dir
     print '----data_dir =', data_dir

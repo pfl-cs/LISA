@@ -13,7 +13,7 @@ class Config(object):
     class __Singleton(object):
         """Singleton design pattern."""
 
-        def __init__(self, home_dir, models_dir, data_dir, logs_dir):
+        def __init__(self):
             """Constructor.
             Parameters
             ----------
@@ -22,40 +22,48 @@ class Config(object):
             data_dir : string, optional (default='data/')
                 directory path to store model generated data.
             """
-            self.home_dir = home_dir
-            self.models_dir = os.path.join(self.home_dir, models_dir)
-            self.data_dir = os.path.join(self.home_dir, data_dir)
+            data_name = '4d_uniform'
+            self.home_dir = os.path.join(os.path.expanduser("~"), os.path.join('workspace/LISA', data_name))
+            self.models_dir = os.path.join(self.home_dir, 'models')
+            self.data_dir = os.path.join(self.home_dir, 'data')
             # self.logs_dir = os.path.join(self.home_dir, logs_dir)
             FileViewer.detect_and_create_dir(self.home_dir)
             FileViewer.detect_and_create_dir(self.models_dir)
             FileViewer.detect_and_create_dir(self.data_dir)
             # FileViewer.detect_and_create_dir(self.logs_dir)
 
+
+            self.query_range_path = os.path.join(self.data_dir, "query_ranges.qr")
+            self.static_data_name = "data_0.npy"  # static data path
+            self.data_to_insert_name = "data_2.npy"  # data to insert
+            self.data_to_delete_name = "data_3.npy"  # data to delete
             self.cell_params_path = "cell_params.npy"
+
+
+            # params for bulk loading
             self.data_dim = 4 # The dimension of spatial data
             self.sigma = 100
-            self.n_nodes_each_dim = 50 # number of nodes in each dim
             self.max_value = 10000 # max value
-            self.n_parts_each_dim = 32 # number of parts in dim 0
-            self.n_piecewise_models = 1024 # number of parts in other dims
+            self.T_each_dim = 32 # number of parts in each dim
+            self.n_piecewise_models = 1024
             self.eta = 0.01
             self.page_size = 60
             self.min_value = 0
-            self.static_data_name = "data_0.npy" # static data path
-            self.data_to_insert_name = "data_2.npy"  # data to insert
-            self.data_to_delete_name = "data_3.npy"  # data to delete
+
             self.lr = 1e-1
-            self.query_range_path = "query_ranges.txt"
+
+
+            self.tau = 50 # number of nodes in each dim
+
+
             print '---------Config is initilized----------'
 
     instance = None
 
-    def __new__(cls, home_dir=os.path.join(os.path.expanduser("~"), '.pfl'), models_dir='models/',
-                data_dir='data/',
-                logs_dir='logs/'):
+    def __new__(cls):
         """Return singleton instance."""
         if not Config.instance:
-            Config.instance = Config.__Singleton(home_dir, models_dir, data_dir, logs_dir)
+            Config.instance = Config.__Singleton()
         return Config.instance
 
     def __getattr__(self, name):

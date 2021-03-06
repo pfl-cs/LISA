@@ -34,7 +34,7 @@ The details of the hardwares we used for the experiments are shown as follows.
 
 2) Clone the [repository](https://github.com/pfl-cs/LISA) under a directory $Workspace$.
 
-3) Download [data_0.npy](https://pan.zju.edu.cn/share/ca8517137bf7a761f8c890a80b), [data_2.npy](https://pan.zju.edu.cn/share/ceb81197252d392b27ee9fa6bc) and [data_3.npy](https://pan.zju.edu.cn/share/830cf9a821beba9534ae398757). Put them in the directory $Workspace$/LISA/4d_uniform/data/.
+3) Download [data_0.npy](https://pan.zju.edu.cn/share/ca8517137bf7a761f8c890a80b), [data_2.npy](https://pan.zju.edu.cn/share/ceb81197252d392b27ee9fa6bc), [data_3.npy](https://pan.zju.edu.cn/share/830cf9a821beba9534ae398757) and [query_ranges.qr](https://pan.zju.edu.cn/share/d4abb5167c535f7091437d5c17). Put them in the directory $Workspace$/LISA/4d_uniform/data/.
 
 4) cd $Workspace$/LISA/src and run main.py
 
