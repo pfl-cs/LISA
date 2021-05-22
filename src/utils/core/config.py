@@ -57,7 +57,7 @@ class Config(object):
             # FileViewer.detect_and_create_dir(self.logs_dir)
 
 
-            self.query_range_path = os.path.join(self.data_dir, "query_ranges.qr")
+            self.query_range_path = os.path.join(self.data_dir, data_name + "_query_ranges.qr")
             self.static_data_name = data_name + "_data_0.npy"  # static data path
             self.data_to_insert_name = data_name + "_data_2.npy"  # data to insert
             self.data_to_delete_name = data_name + "_data_3.npy"  # data to delete

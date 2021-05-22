@@ -176,7 +176,7 @@ if __name__ == '__main__':
     print 'home_dir =', Config().home_dir
     print 'data_dir =', Config().data_dir
     temp_dir = Config().data_dir
-    raw_data = np.load(os.path.join(temp_dir, 'data_0.npy'))
+    raw_data = np.load(os.path.join(temp_dir, Config().static_data_name))
     model_dir_init = os.path.join(Config().models_dir, 'LISA_Init')
     my_idx, one_dim_mappings, sorted_data = bulk_loading(raw_data, temp_dir, model_dir_init)
 
