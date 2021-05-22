@@ -128,25 +128,35 @@ def lattice_regression_preprocessing(my_idx, tau, lattice_data_dir):
             flag = True
             break
 
+    lattice_nodes = None
+    lattice_training_points = None
+    knn_testing_points = None
     if flag == True:
-        lattice_nodes = my_idx.lattice_nodes_gen(tau)
-        lattice_training_points = my_idx.sampling(lattice_nodes.shape[0] * 40)
-        knn_testing_points = my_idx.sampling(lattice_nodes.shape[0] * 10)
+        if os.path.exists(lattice_nodes_path) and os.path.exists(lattice_training_points_path) and os.path.exists(knn_testing_points_path):
+            lattice_nodes = np.load(lattice_nodes_path)
+            lattice_training_points = np.load(lattice_training_points_path)
+            knn_testing_points = np.load(knn_testing_points_path)
+        else:
+            lattice_nodes = my_idx.lattice_nodes_gen(tau)
+            n = 40
+            lattice_training_points = my_idx.sampling(lattice_nodes.shape[0] * n)
+            knn_testing_points = my_idx.sampling(lattice_nodes.shape[0] * 10)
 
-        np.save(lattice_nodes_path, lattice_nodes)
-        np.save(lattice_training_points_path, lattice_training_points)
-        np.save(knn_testing_points_path, knn_testing_points)
+            np.save(lattice_nodes_path, lattice_nodes)
+            np.save(lattice_training_points_path, lattice_training_points)
+            np.save(knn_testing_points_path, knn_testing_points)
 
-        nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, tau, 20)
-        lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, tau, 20)
-        knn_testing_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, tau, 20)
+        if os.path.exists(nodes_radiuses_path) == False:
+            nodes_radiuses = my_idx.get_estimate_radiuses(lattice_nodes, tau, 10)
+            np.save(nodes_radiuses_path, nodes_radiuses)
 
-        np.save(nodes_radiuses_path, nodes_radiuses)
-        np.save(lattice_training_radiuses_path, lattice_training_radiuses)
-        np.save(knn_testing_radiuses_path, knn_testing_radiuses)
+        if os.path.exists(lattice_training_radiuses_path) == False:
+            lattice_training_radiuses = my_idx.get_estimate_radiuses(lattice_training_points, tau, 10)
+            np.save(lattice_training_radiuses_path, lattice_training_radiuses)
 
-    # my_idx.save_lattice_info(Config().data_dir, lattice_nodes, nodes_radiuses, lattice_training_points, lattice_training_radiuses, n_nodes_each_dim)
-
+        if os.path.exists(knn_testing_radiuses_path) == False:
+            knn_testing_radiuses = my_idx.get_estimate_radiuses(knn_testing_points, tau, 10)
+            np.save(knn_testing_radiuses_path, knn_testing_radiuses)
 
 
 
@@ -175,7 +185,7 @@ if __name__ == '__main__':
     for line in query_range_strs:
         query_ranges.append([float(i) for i in line.strip().split(' ')])
     query_ranges = np.array(query_ranges, dtype=np_data_type())
-    query_ranges = query_ranges[0:100]
+    # query_ranges = query_ranges[0:100]
     #
     # Fig 7 & Fig 11: --------------range query on init--------------------
     # my_idx = LISA()
@@ -183,7 +193,6 @@ if __name__ == '__main__':
     # flag = my_idx.check_and_load_params()
     # assert (flag == True)
     # total_n_pages, n_entries = my_idx.range_query(query_ranges)
-    # print '#Pages =', total_n_pages
 
     # Fig 8 & Fig 12: --------------range query on AI-----------------------
     # my_idx.set_model_dir(model_dir_init)
@@ -223,13 +232,7 @@ if __name__ == '__main__':
 
     knn_testing_points_path = os.path.join(lattice_data_dir, 'testing_points.npy')
     query_centers = np.load(knn_testing_points_path)
-    K = 10
-    all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query = my_idx.knn_query(
-        query_centers, K)
-    print '#Pages =', total_n_pages
+    query_centers = query_centers[0:1000]
 
-
-
-
-
-
+    K = 3
+    queried_keys = my_idx.knn_query(query_centers, K)

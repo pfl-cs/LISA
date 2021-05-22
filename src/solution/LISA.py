@@ -428,10 +428,38 @@ class LISA():
             idx = np.searchsorted(shard_split_mappings, mapping, side=side)
             return idx
 
-    def get_query_page_nos(self, query_ranges):
+    def get_query_page_nos(self, query_ranges, step=-1):
         lower_mappings, upper_mappings, num_query_points_each_query = self.get_query_ranges_mappings(query_ranges)
-        lower_shard_ids = self.predict_shard_ids(lower_mappings)
-        upper_shard_ids = self.predict_shard_ids(upper_mappings)
+
+
+        if step <= 0:
+            lower_shard_ids = self.predict_shard_ids(lower_mappings)
+            upper_shard_ids = self.predict_shard_ids(upper_mappings)
+        else:
+            n_iters = int(lower_mappings.shape[0] / step)
+            if step * n_iters < lower_mappings.shape[0]:
+                n_iters += 1
+
+            l_sids_list = []
+            u_sids_list = []
+            # print '----n_iters =', n_iters
+            for i in range(n_iters):
+                start = i * step
+                end = start + step
+                if end > lower_mappings.shape[0]:
+                    end = lower_mappings.shape[0]
+
+                small_lower_shard_ids = self.predict_shard_ids(lower_mappings[start:end])
+                small_upper_shard_ids = self.predict_shard_ids(upper_mappings[start:end])
+
+                l_sids_list.append(small_lower_shard_ids)
+                u_sids_list.append(small_upper_shard_ids)
+            lower_shard_ids = np.concatenate(l_sids_list, axis=0)
+            upper_shard_ids = np.concatenate(u_sids_list, axis=0)
+
+
+
+
         start = 0
         query_page_nos = []
         for i in range(len(num_query_points_each_query)):
@@ -498,8 +526,8 @@ class LISA():
 
         return n_pages_each_query, n_entries_each_query
 
-    def get_query_keys_within_sphericals(self, query_ranges, centers, radiuses):
-        query_page_nos = self.get_query_page_nos(query_ranges)
+    def get_query_keys_within_sphericals(self, query_ranges, centers, radiuses, step=-1):
+        query_page_nos = self.get_query_page_nos(query_ranges, step=step)
         query_keys_list = []
         query_key_dists_list = []
         n_pages_list = []
@@ -529,15 +557,16 @@ class LISA():
 
         radiuses = np.ones(shape=points.shape[0], dtype=points.dtype) * radius
 
-        offset = 100000
-        n_iters = int(query_ranges.shape[0] / offset)
-        if offset * n_iters < query_ranges.shape[0]:
+        step = 10000
+        n_iters = int(query_ranges.shape[0] / step)
+        if step * n_iters < query_ranges.shape[0]:
             n_iters += 1
 
         radius_list = [None] * points.shape[0]
+        print '----n_iters =', n_iters
         for i in range(n_iters):
-            start = i * offset
-            end = start + offset
+            start = i * step
+            end = start + step
             if end > query_ranges.shape[0]:
                 end = query_ranges.shape[0]
             small_query_ranges = query_ranges[start:end]
@@ -548,6 +577,9 @@ class LISA():
                 dists = small_query_key_dists_list[j]
                 if dists.shape[0] >= K:
                     radius_list[j + start] = dists[0:K]
+                # tmp = small_query_keys_list[j]
+                # print("^^^^point =", points[j])
+                # print("&&&&&tmp =", tmp)
             print '**************', i, 'finished*******************'
 
         return radius_list
@@ -610,13 +642,10 @@ class LISA():
             query_ranges = np.clip(query_ranges, a_min=Config().min_value, a_max=Config().max_value)
             return query_ranges
 
-        start = time.time()
         dists, node_indices_list = self.lat_reg.fit(points)
-        end = time.time()
-        print 'approximating distance bounds takes', end - start, 'seconds'
+
         if ideal is not None:
             dists = ideal
-            print 'dists.shape =', dists.shape
         dists = np.clip(dists, a_min=1, a_max=Config().max_value)
         radiuses = dists[:, K - 1]
 
@@ -642,22 +671,20 @@ class LISA():
             next_radiuses_list = []
             # print '-----------------------------iter', iter, '----------------------------'
             query_ranges = inner_qr_gen(next_points, next_radiuses, self.data_dim)
-            start = time.time()
+            # print('query_ranges.shape =', query_ranges[0:10])
             query_keys_list, _, n_pages_list = self.get_query_keys_within_sphericals(query_ranges, next_points,
-                                                                                     next_radiuses)
-            end = time.time()
-            print 'range query takes', end - start, 'seconds'
+                                                                                     next_radiuses, step=100000)
 
             for i in range(len(query_keys_list)):
-                queied_keys = query_keys_list[i]
-                n_queried_keys = queied_keys.shape[0]
+                queried_keys = query_keys_list[i]
+                n_queried_keys = queried_keys.shape[0]
                 act_i = next_indices[i]
 
                 if n_queried_keys >= K:
                     n_pages_every_query[act_i] = n_pages_list[i]
                     total_n_pages += n_pages_list[i]
                     # all_queried_keys[act_i] = queied_keys[0:K]
-                    all_queried_keys[act_i] = queied_keys
+                    all_queried_keys[act_i] = queried_keys
                 else:
                     next_indices_list.append(act_i)
                     next_points_list.append(next_points[i])
@@ -675,7 +702,6 @@ class LISA():
                     radiuses[act_i] = radius
 
             if len(next_indices_list) > 0:
-                print len(next_indices_list)
                 next_indices = np.array(next_indices_list, dtype=np_idx_type())
                 next_points = np.array(next_points_list, dtype=np_data_type())
                 next_radiuses = np.array(next_radiuses_list, dtype=np_data_type())
@@ -684,7 +710,7 @@ class LISA():
 
             iter += 1
 
-        return all_queried_keys, total_n_pages, radiuses, init_radiuses, node_indices_list, n_pages_every_query
+        return all_queried_keys
 
     def overlap_spherical(self, data, center, radius):
         offsets = data - center
@@ -762,7 +788,7 @@ class LISA():
 
     def insert(self, points):
         point_mappings = self.monotone_mappings(points)
-        print '---point_mappings.shape =', point_mappings.shape
+        # print '---point_mappings.shape =', point_mappings.shape
         offset = 10000
         n = int(point_mappings.shape[0]/offset)
         if n * offset < point_mappings.shape[0]:

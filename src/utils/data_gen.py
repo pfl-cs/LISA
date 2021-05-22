@@ -6,7 +6,7 @@ import FileViewer
 import os
 import random
 from src.FLAGS_DEFINE import *
-import cv2
+# import cv2
 
 
 
@@ -212,8 +212,8 @@ def imagenet_data_gen(raw_imagenet_dir, data_dir):
 
 
 if __name__ == '__main__':
-    workspace = '/home/pfl/workspace/LISA/4d_uniform'
-    Config(workspace)
+    # workspace = '/home/pfl/workspace/LISA/3d_uniform'
+    Config()
     data_dir = Config().data_dir
     print '----data_dir =', data_dir
     FileViewer.detect_and_create_dir(data_dir)
